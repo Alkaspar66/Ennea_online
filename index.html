@@ -151,53 +151,98 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
-  <script>
-    // EmailJS init
-    (function() {
-      emailjs.init("TST8eqRZ9ugx921IF"); // ← вставь сюда public_key
-    })();
+<script>
+  // Инициализация EmailJS
+  (function() {
+    emailjs.init("TST8eqRZ9ugx921IF"); // ← твой public_key
+  })();
 
-    // Google Apps Script URL
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx36MuG6VxCpLHkyEwopReFRnFb5EOpuzN1PIFpQC9_w2ZskVONOg8zGbLGCUq4kktU/exec";
+  // URL Google Script
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx36MuG6VxCpLHkyEwopReFRnFb5EOpuzN1PIFpQC9_w2ZskVONOg8zGbLGCUq4kktU/exec";
 
-    // Модальное окно
-    const modal = document.getElementById("signupModal");
-    const openBtns = [document.getElementById("openForm"), document.getElementById("openForm2")];
-    const closeBtn = document.getElementById("closeModal");
-    openBtns.forEach(btn => btn.onclick = () => modal.style.display = "block");
-    closeBtn.onclick = () => modal.style.display = "none";
-    window.onclick = e => { if (e.target === modal) modal.style.display = "none"; };
+  // Элементы формы и модалки
+  const modal = document.getElementById("signupModal");
+  const form = document.getElementById("signupForm");
+  const successMsg = document.getElementById("success-message");
+  const openBtns = [document.getElementById("openForm"), document.getElementById("openForm2")];
+  const closeBtn = document.getElementById("closeModal");
 
-    // Отправка формы
-    const form = document.getElementById("signupForm");
-    const successMsg = document.getElementById("success-message");
+  // Открытие / закрытие модального окна
+  openBtns.forEach(btn => btn.onclick = () => modal.style.display = "block");
+  closeBtn.onclick = () => modal.style.display = "none";
+  window.onclick = e => { if (e.target === modal) modal.style.display = "none"; };
 
-    form.addEventListener("submit", function(event) {
-      event.preventDefault();
+  // Плавное скрытие модального окна
+  function closeModalSmooth() {
+    modal.style.transition = "opacity 0.5s ease";
+    modal.style.opacity = "0";
+    setTimeout(() => {
+      modal.style.display = "none";
+      modal.style.opacity = "1";
+    }, 500);
+  }
 
-      const data = {
-        name: form.name.value,
-        surname: form.surname.value,
-        email: form.email.value,
-        contact: form.contact.value
-      };
+  // Обработка формы
+  form.addEventListener("submit", function(event) {
+    event.preventDefault();
 
-      // 1️⃣ Отправка в EmailJS
-      emailjs.send("service_v1e85gg", "template_b20l0nn", data, "TST8eqRZ9ugx921IF");
+    const data = {
+      name: form.name.value.trim(),
+      surname: form.surname.value.trim(),
+      email: form.email.value.trim(),
+      contact: form.contact.value.trim()
+    };
 
-      // 2️⃣ Отправка в Google Sheets
-      fetch(SCRIPT_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
-
-      // Показать сообщение
-      successMsg.style.display = "block";
-      form.reset();
-      setTimeout(() => successMsg.style.display = "none", 4000);
+    // Проверка всех полей
+    let valid = true;
+    Object.keys(data).forEach(key => {
+      const field = form[key];
+      if (!data[key]) {
+        valid = false;
+        field.style.borderColor = "red";
+      } else {
+        field.style.borderColor = "#ccc";
+      }
     });
-  </script>
+    if (!valid) {
+      alert("Пожалуйста, заполните все поля перед отправкой.");
+      return;
+    }
+
+    // Блокируем кнопку на время отправки
+    const btn = form.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.style.opacity = "0.6";
+
+    // 1️⃣ Отправка в EmailJS
+    emailjs.send("service_v1e85gg", "template_b20l0nn", data, "TST8eqRZ9ugx921IF")
+      .then(() => {
+        // 2️⃣ Параллельно — отправка в Google Sheets
+        fetch(SCRIPT_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+
+        // 3️⃣ Сообщение об успехе и плавное закрытие
+        successMsg.style.display = "block";
+        form.reset();
+        setTimeout(() => {
+          successMsg.style.display = "none";
+          closeModalSmooth();
+          btn.disabled = false;
+          btn.style.opacity = "1";
+        }, 1500);
+      })
+      .catch(err => {
+        alert("Ошибка отправки письма: " + (err.text || err));
+        btn.disabled = false;
+        btn.style.opacity = "1";
+      });
+  });
+</script>
+
 </body>
 </html>
+
